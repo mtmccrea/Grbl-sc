@@ -82,7 +82,7 @@ m.plotterY.stop;
 m.plotterX.start;
 m.plotterY.start;
 
-ArduinoGRBLView(a)
+a.planningBufGui
 
 a.underDrive_(0.8)
 a.overDrive_(1.3)

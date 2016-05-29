@@ -2,9 +2,9 @@ Grbl : Arduino
 {
 	classvar <>numInstances = 0;
 
-	var <id, <>stateAction, <>dispatching=false, <streamBuf, <maxLagDist, <>minMoveQueue;
+	var <id, <>stateAction, <streamBuf;
 	var <>mPos, <>wPos=0, <>mode, <stateRoutine;
-	var <>postState = false, <rx_buf_size;
+	var <>postState = false;
 	var <posBus, <writePos = false, <>stateUpdateRate;
 	var <>server;
 	var <posPlotter;
@@ -98,7 +98,7 @@ Grbl : Arduino
 		distY = (toY - wPos[1]).abs;
 		maxDist = max(distX, distY);
 		feedRateSec = maxDist / duration; // dist/sec
-		feed = (feedRateSec * 60).clip(minFeed, maxFeed); //dist/min
+		feed = (feedRateSec * 60); //dist/min
 
 		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
 	}

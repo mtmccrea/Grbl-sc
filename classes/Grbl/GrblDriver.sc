@@ -29,16 +29,19 @@ GrblDriver : Grbl {
 
 	var <followSynthXY, <followDefXY, <followResponderXY;
 	var <starving = false, <lagging = false;
-	var <plannerView, <feedSpec, rx_buf_size = 128;
+	var <plannerView, <feedSpec;
+	var rx_buf_size = 128;
 	var gui;
 
 	// LFO driving vars
-	var lfoDrivingEnabled = false, <lfoDriving;
+	var lfoDrivingEnabled = false, <driving;
 	var <lfoControlX, <lfoControlY, <plotterX, <plotterY;
 	var <lfoLowX, lfoHighX, <lfoLowY, lfoHighY;
 	var <centerX, <centerY, <rangeX, <rangeY;
 
 	// var <>debug;
+
+	*guiClass { ^this.subclassResponsibility(thisMethod) }
 
 	// NOTE: overwrites Grbl's init method
 	init {
@@ -46,7 +49,7 @@ GrblDriver : Grbl {
 		Grbl.numInstances = Grbl.numInstances +1;
 		id = Grbl.numInstances;
 		streamBuf = List();
-		parser = this.class.parserClass.new(this);
+		parser = Grbl.parserClass.new(this);
 		mPos = [0,0,0];
 		wPos	 = [0,0,0];
 		// default rate that state will be requested when stateRoutine runs
@@ -60,14 +63,27 @@ GrblDriver : Grbl {
 
 	initSystemParams { ^this.subclassResponsibility(thisMethod) }
 
-	gui { ^this.subclassResponsibility(thisMethod) }
+	gui { | ... args |
+		// for the moment guis are expected to have lfo support
+		// so initLFO driving before creating gui
+		fork( {
+			var cond = Condition();
+			this.initLfoDriving( finishedCond: cond );
+			cond.wait;
+
+			gui = this.class.guiClass.new(this, *args);
+		}, clock: AppClock
+		);
+	}
+
+	makeGui { ^this.subclassResponsibility(thisMethod) }
 
 	prPushParams {
 		this.updateSoftClipLimits;
 		feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
 	}
 
-	planningBufGui { plannerView = GrblPlannerBufView(grbl) }
+	planningBufGui { plannerView = GrblPlannerBufView(this) }
 
 	// Grbl recommends not to exceed 5Hz update rate, but....
 	followSerialBufXY_ { |ctlBusX, ctlBusY, driveRate, updateStateHz, planningBufGui = false|
@@ -248,10 +264,12 @@ GrblDriver : Grbl {
 
 		size = cmd.size + 1; // add 1 for the eol char added in .send
 
+		postf("size: %\nstreamBuf: %\nrx_buf_size: %\n\n", size , streamBuf, rx_buf_size);
+
 		// only send the move if the message won't overflow the serial buffer
-		if ( (size + streamBuf.sum) < rx_buf_size,
-			{ this.send(cmd); ^true },{^false}
-		);
+		if ((size + streamBuf.sum) < rx_buf_size)
+		{ this.send(cmd); ^true }
+		{^false};
 	}
 
 	// Catch the move request before soft limit in GRBL to avoid ALARM
@@ -303,6 +321,22 @@ GrblDriver : Grbl {
 		};
 		followSynthXY !? {followSynthXY.pause};
 		plannerView !? {plannerView.free};
+	}
+
+	// Go to a postion over specific duration.
+	// overwrites Grbl.goToDur, clipping at min/maxFeed
+	// NOTE: doesn't currently account for acceleration, so faster moves
+	// will actually take a bit longer than expected
+	goToDur_ { |toX, toY, duration|
+		var distX, distY, maxDist, feedRateSec, feed;
+
+		distX = (toX - wPos[0]).abs;
+		distY = (toY - wPos[1]).abs;
+		maxDist = max(distX, distY);
+		feedRateSec = maxDist / duration; // dist/sec
+		feed = (feedRateSec * 60).clip(minFeed, maxFeed); //dist/min
+
+		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
 	}
 
 	// To set bounds for both plotters and for catching moves that would

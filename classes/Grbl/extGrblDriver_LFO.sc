@@ -15,7 +15,7 @@
 		centerX = xlo + rangeX.half;
 		centerY = ylo + rangeY.half;
 
-		lfoDriving	= false;
+		driving	= false;
 
 		fork {
 			lfoDrivingEnabled.not.if{
@@ -54,8 +54,8 @@
 				motorInstructionRate ?? 40,
 				stateUpdateRate ?? 8
 			);
-			lfoDriving = true;
-			this.changed(\driving, lfoDriving);
+			driving = true;
+			this.changed(\driving, driving);
 		},{ "lfo driving not enabled".warn }
 		)
 	}
@@ -194,8 +194,8 @@
 
 	stopLfo {
 		this.unfollow;
-		lfoDriving = false;
-		this.changed(\driving, lfoDriving);
+		driving = false;
+		this.changed(\driving, driving);
 	}
 
 	// free {
