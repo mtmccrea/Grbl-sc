@@ -1,4 +1,4 @@
-GrblView {
+GrblPlannerBufView {
 	// copyArgs
 	var <grbl;
 	var <win, <widgets;

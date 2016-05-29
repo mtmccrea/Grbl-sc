@@ -5,7 +5,6 @@
 //		ControlPlotter (plotMotorPositions)
 
 // TODO: followSynthXY functionality could probably be replaced by bus.getSyncronous
-// TODO: remove dependency on CTK - CTKControl, etc
 // TODO: work out relationship between motorInstructionRate and updateStateHz
 // TODO: inspect for world position offset and max travel params to calc soft limits in SC
 // TODO: many of these params are machine-specific, subclass for each machine, or be able to read in settings file
@@ -13,17 +12,16 @@
 GrblDriver : Grbl {
 	var <grbl; // copyArgs
 
-	var <>maxDistPerSec	= 90; 		// e.g. 180 / 3.2702541628;	// seconds to go 180 degrees
-	var <>maxLagDist		= 10; 		// max units that the world can lag behind a control signal
-	var <minFeed				= 50;
-	var <maxFeed				= 4675;
-	var <>underDrive		= 1.0;
-	var <>overDrive			= 1.1;
-	var <>dropLag 			= 0.7;		// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
-	var <motorInstructionRate = 45; // rate to send new motor destinations
-	var <>minMoveQueue	= 2;			// min moves queue'd up in buffer
+	// the fallowing variables must be defined in .initSystemParams
+	var <>maxDistPerSec; 		// e.g. 180 / 3.2702541628;	// seconds to go 180 degrees
+	var <>maxLagDist; 			// max units that the world can lag behind a control signal
+	var <minFeed, <maxFeed;
+	var <>underDrive, <>overDrive;
+	var <>dropLag;		// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
+	var <motorInstructionRate; // rate to send new motor destinations
+	var <>minMoveQueue;		// min moves queue'd up in buffer
 
-	var <> catchSoftLimit	= true;		// check location before sending to GRBL to catch before soft limit to prevent ALARM
+	var <>catchSoftLimit	= true;		// check location before sending to GRBL to catch before soft limit to prevent ALARM
 	var <softClipMargin 	= 0.5;		// offset from soft limits to clip before GRBL soft limit alarm
 
 	var <xLimitLow, <xLimitHigh, <yLimitLow, <yLimitHigh;
@@ -31,34 +29,47 @@ GrblDriver : Grbl {
 
 	var <followSynthXY, <followDefXY, <followResponderXY;
 	var <starving = false, <lagging = false;
-	var <driveView, <feedSpec, rx_buf_size = 128;
+	var <plannerView, <feedSpec, rx_buf_size = 128;
+
+	// LFO driving vars
+	var lfoDrivingEnabled = false, <lfoDriving;
+	var <lfoControlX, <lfoControlY, <plotterX, <plotterY;
+	var <lfoLowX, lfoHighX, <lfoLowY, lfoHighY;
+	var <centerX, <centerY, <rangeX, <rangeY;
+
 	// var <>debug;
 
-	*new { |aGrbl|
-		^super.newCopyArgs(aGrbl).init;
-	}
-
+	// NOTE: overwrites Grbl's init method
 	init {
-		feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
+		// used to create a unique ID, no need to remove when freed
+		Grbl.numInstances = Grbl.numInstances +1;
+		id = Grbl.numInstances;
+		streamBuf = List();
+		parser = this.class.parserClass.new(this);
+		mPos = [0,0,0];
+		wPos	 = [0,0,0];
+		// default rate that state will be requested when stateRoutine runs
+		stateUpdateRate = 8;
 
-		// TODO: move these bounds to motor driver class, where they must be explicitly set,
-		// or infer them from soft limit state in GRBL
-		// These defaults are for mtm's pan/tilt rig
-		xLimitLow	=	292.00.half.neg;
-		xLimitHigh	=	292.00.half;
-		yLimitLow	=	164.00.half.neg;
-		yLimitHigh	=	164.00.half;
+		this.initSystemParams;
+		this.pushParams;		// update some state vars based on system params
 
-		xClipLow =	xLimitLow	 + 0.5;
-		xClipHigh =	xLimitHigh - 0.5;
-		yClipLow =	yLimitLow + 0.5;
-		yClipHigh =	yLimitHigh - 0.5;
+		inputThread = fork { parser.parse };
 	}
 
-	gui { driveView = GrblView(grbl) }
+	initSystemParams {
+		^this.subclassResponsibility(thisMethod)
+	}
+
+	pushParams {
+		this.updateSoftClipLimits;
+		feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
+	}
+
+	planningBufGui { plannerView = GrblPlannerBufView(grbl) }
 
 	// Grbl recommends not to exceed 5Hz update rate, but....
-	followSerialBufXY_ { |ctlBusX, ctlBusY, driveRate, updateStateHz, gui = false|
+	followSerialBufXY_ { |ctlBusX, ctlBusY, driveRate, updateStateHz, planningBufGui = false|
 		var lastDest;
 
 		"initializing serial bus following".postln;
@@ -71,7 +82,7 @@ GrblDriver : Grbl {
 		// writePos.not.if{ this.writePosToBus_(true) };
 
 		// monitor how full the serial buffer is: starved or dropping messages
-		gui.if{ driveView = GrblView(grbl) };
+		planningBufGui.if{ this.planningBufGui };
 
 		// start the stream buffer fresh
 		streamBuf.clear;
@@ -93,32 +104,30 @@ GrblDriver : Grbl {
 		server ?? {server = Server.default};
 		server.waitForBoot({
 
-			followSynthXY.isNil.if(
-				{
-					var followDef;
-					followDefXY = CtkSynthDef( \busFollowXY++id, {// make the def unique w/ id
-						| followBusX, followBusY, sendRate|
-						SendReply.ar(
-							Impulse.ar(sendRate),
-							'/busFollowXY'++id,
-							[In.kr(followBusX, 1), In.kr(followBusY, 1)]
-						)
-					});
-					server.sync;
+			if (followSynthXY.isNil) {
+				var followDef;
+				followDefXY = CtkSynthDef( \busFollowXY++id, {// make the def unique w/ id
+					| followBusX, followBusY, sendRate|
+					SendReply.ar(
+						Impulse.ar(sendRate),
+						'/busFollowXY'++id,
+						[In.kr(followBusX, 1), In.kr(followBusY, 1)]
+					)
+				});
+				server.sync;
 
-					followSynthXY = followDefXY.note
-					.followBusX_(ctlBusX)
-					.followBusY_(ctlBusY)
-					.sendRate_(motorInstructionRate)
-					.play
-				},{
-					followSynthXY
-					.followBusX_(ctlBusX)
-					.followBusY_(ctlBusY)
-					.sendRate_(motorInstructionRate)
-					.run;
-				}
-			);
+				followSynthXY = followDefXY.note
+				.followBusX_(ctlBusX)
+				.followBusY_(ctlBusY)
+				.sendRate_(motorInstructionRate)
+				.play
+			} {
+				followSynthXY
+				.followBusX_(ctlBusX)
+				.followBusY_(ctlBusY)
+				.sendRate_(motorInstructionRate)
+				.run;
+			};
 		});
 
 		// create a responder to receive the driving control signal from the server (followSynthXY)
@@ -292,12 +301,13 @@ GrblDriver : Grbl {
 			followResponderXY = nil;
 		};
 		followSynthXY !? {followSynthXY.pause};
-		driveView !? {driveView.free};
+		plannerView !? {plannerView.free};
 	}
 
-		// To set bounds for both plotters and for catching moves that would
+	// To set bounds for both plotters and for catching moves that would
 	// otherwise trigger soft limit ALARMs in GRBL
 	// see catchSoftLimit arg in followSerialBufXY_ and submitMoveXY
+	// TODO: could infer and/or update them from soft limit setting in GRBL
 	xLimitLow_ { |lowBound|
 		lowBound !? { xLimitLow = lowBound; this.updateSoftClipLimits }
 	}
@@ -332,11 +342,13 @@ GrblDriver : Grbl {
 		this.updateSoftClipLimits
 	}
 
+
+
 	free {
 		this.unfollow;
 		followSynthXY !? { followSynthXY.free };
 		followResponderXY !? { followResponderXY.free };
-
+		this.cleanupLfo;
 		super.free;
 	}
 }

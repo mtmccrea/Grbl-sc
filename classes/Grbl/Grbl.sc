@@ -11,17 +11,15 @@ Grbl : Arduino
 
 	*parserClass { ^GrblParser }
 
-	// note this overwrites Arduino's init method
+	// NOTE: overwrites Arduino's init method
 	init {
 		// used to create a unique ID, no need to remove when freed
 		Grbl.numInstances = Grbl.numInstances +1;
 		id = Grbl.numInstances;
-
 		streamBuf = List();
 		parser = this.class.parserClass.new(this);
-
-		mPos				= [0,0,0];
-		wPos					= [0,0,0];
+		mPos = [0,0,0];
+		wPos	 = [0,0,0];
 
 		// default rate that state will be requested when stateRoutine runs
 		stateUpdateRate = 8;
@@ -93,10 +91,10 @@ Grbl : Arduino
 	// NOTE: ? status, ~ cycle start/resume, ! feed hold, and ^X soft-reset
 	// are responded to immediately and so do not need to be tracked in the streamBuf
 	// so use port.putAll (.send adds to the streamBuf)
-	state	{ port.putAll("?") }
+	state		{ port.putAll("?") }
 	pause	{ port.putAll("!") }
 	resume	{ port.putAll("~") }
-	reset	{ port.putAll([24, 120]); streamBuf.clear; } // cmd + x - no CR needed
+	reset		{ port.putAll([24, 120]); streamBuf.clear; } // cmd + x - no CR needed
 
 	home	{ port.putAll("$H\n") }
 	unlock	{
@@ -274,7 +272,7 @@ Grbl : Arduino
 	// write the motor position to a bus so it can be plotted
 	writePosToBus_ { |bool = true, busnum, completeCondition|
 
-		bool.if {
+		if (bool) {
 			server ?? {server = Server.default};
 			server.waitForBoot({
 
@@ -289,6 +287,8 @@ Grbl : Arduino
 				};
 				completeCondition !? {completeCondition.test_(true).signal};
 			});
+		} {
+			posBus !? { posBus.free; posBus = nil };
 		};
 
 		// set the writePos variable so the parser whether to update
@@ -299,6 +299,7 @@ Grbl : Arduino
 	free {
 		stateRoutine.stop;
 		posPlotter !? { posPlotter.free };
+		posBus !? { posBus.free; posBus = nil };
 		this.close;
 	}
 }

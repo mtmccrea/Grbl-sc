@@ -53,6 +53,9 @@ MotorDriver {
 		driving	= false;
 		slowAxis = 0; // default slow axis to pan
 
+		// NOTE: feedRates are only used by this.driveRandom and this.drivePeriodic
+		// driveLFO simply uses a controlspec from minFeed>maxFeed
+
 		// TODO: move this elsewhere
 		/* PAN/TILT */
 		// feedsRates = [
@@ -74,7 +77,6 @@ MotorDriver {
 		// 	// 5400, 60.809889561544,
 		// ].clump(2);
 
-		// TODO: move this elsewhere
 		/* DRAWING MACHINE */
 		feedsRates = [
 			// feerate, deg/sec
