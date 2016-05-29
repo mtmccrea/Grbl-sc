@@ -52,7 +52,7 @@ Grbl : Arduino
 		this.changed(\streamSum, streamBuf.sum);
 	}
 
-	goTo_{ |toX, toY, feed|
+	goTo_ { |toX, toY, feed|
 		var cmd = "G01";
 		toX !? {cmd = cmd ++ "X" ++ toX};
 		toY !? {cmd = cmd ++ "Y" ++ toY};
@@ -87,6 +87,22 @@ Grbl : Arduino
 	feed_ { |feedRate|
 		feedRate !? {this.send("G0F" ++ feedRate.asString)}
 	}
+
+	// Go to a postion over specific duration
+	// NOTE: doesn't currently account for acceleration, so faster moves
+	// will actually take a bit longer than expected
+	goToDur_ { |toX, toY, duration|
+		var distX, distY, maxDist, feedRateSec, feed;
+
+		distX = (toX - wPos[0]).abs;
+		distY = (toY - wPos[1]).abs;
+		maxDist = max(distX, distY);
+		feedRateSec = maxDist / duration; // dist/sec
+		feed = (feedRateSec * 60).clip(minFeed, maxFeed); //dist/min
+
+		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
+	}
+
 
 	// NOTE: ? status, ~ cycle start/resume, ! feed hold, and ^X soft-reset
 	// are responded to immediately and so do not need to be tracked in the streamBuf

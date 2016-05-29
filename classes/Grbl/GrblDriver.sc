@@ -30,6 +30,7 @@ GrblDriver : Grbl {
 	var <followSynthXY, <followDefXY, <followResponderXY;
 	var <starving = false, <lagging = false;
 	var <plannerView, <feedSpec, rx_buf_size = 128;
+	var gui;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <lfoDriving;
@@ -52,16 +53,16 @@ GrblDriver : Grbl {
 		stateUpdateRate = 8;
 
 		this.initSystemParams;
-		this.pushParams;		// update some state vars based on system params
+		this.prPushParams;		// update some state vars based on system params
 
 		inputThread = fork { parser.parse };
 	}
 
-	initSystemParams {
-		^this.subclassResponsibility(thisMethod)
-	}
+	initSystemParams { ^this.subclassResponsibility(thisMethod) }
 
-	pushParams {
+	gui { ^this.subclassResponsibility(thisMethod) }
+
+	prPushParams {
 		this.updateSoftClipLimits;
 		feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
 	}
@@ -341,7 +342,6 @@ GrblDriver : Grbl {
 		softClipMargin = margin;
 		this.updateSoftClipLimits
 	}
-
 
 
 	free {
