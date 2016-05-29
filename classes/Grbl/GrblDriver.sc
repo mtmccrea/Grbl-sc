@@ -31,7 +31,7 @@ GrblDriver : Grbl {
 	var <starving = false, <lagging = false;
 	var <plannerView, <feedSpec;
 	var rx_buf_size = 128;
-	var gui;
+	var <ui;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving;
@@ -71,7 +71,7 @@ GrblDriver : Grbl {
 			this.initLfoDriving( finishedCond: cond );
 			cond.wait;
 
-			gui = this.class.guiClass.new(this, *args);
+			ui = this.class.guiClass.new(this, *args);
 		}, clock: AppClock
 		);
 	}
@@ -192,9 +192,8 @@ GrblDriver : Grbl {
 							nextPos = goTo;
 						};
 
-						nextFeed = (feedSpec.map(deltaFromLast/maxNextDist) * overDrive).clip(minFeed,maxFeed);
-
-						// nextFeed = nextFeed * (1+(overDrive * (deltaFromLast/maxNextDist)));
+						// nextFeed = (feedSpec.map(deltaFromLast/maxNextDist) * overDrive).clip(minFeed,maxFeed);
+						nextFeed = feedSpec.map(deltaFromLast/maxNextDist).clip(minFeed,maxFeed);
 
 						// slow down if the instruction list is starving
 						if( starving, {
@@ -202,6 +201,16 @@ GrblDriver : Grbl {
 							// debug.if{"STARVING - under driving the feed".postln};
 						}
 						);
+
+						if (lagging){
+							// instruct to move further, bump up the next feed rate
+							// clipping at max feed
+							nextFeed = [
+								// (nextFeed * 1.2),
+								(nextFeed * overDrive),
+								maxFeed
+							].minItem;
+						};
 
 						// if( lagging,
 						// 	{	// instruct to move further, bump up the next feed rate
@@ -264,7 +273,7 @@ GrblDriver : Grbl {
 
 		size = cmd.size + 1; // add 1 for the eol char added in .send
 
-		postf("size: %\nstreamBuf: %\nrx_buf_size: %\n\n", size , streamBuf, rx_buf_size);
+		// postf("size: %\nstreamBuf: %\nrx_buf_size: %\n\n", size , streamBuf, rx_buf_size);
 
 		// only send the move if the message won't overflow the serial buffer
 		if ((size + streamBuf.sum) < rx_buf_size)
