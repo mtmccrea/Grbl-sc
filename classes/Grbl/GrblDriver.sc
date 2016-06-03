@@ -196,17 +196,14 @@ GrblDriver : Grbl {
 						nextFeed = feedSpec.map(deltaFromLast/maxNextDist).clip(minFeed,maxFeed);
 
 						// slow down if the instruction list is starving
-						if( starving, {
+						if (starving) {
 							nextFeed = nextFeed * underDrive;
-							// debug.if{"STARVING - under driving the feed".postln};
-						}
-						);
+						};
 
-						if (lagging){
+						if (lagging) {
 							// instruct to move further, bump up the next feed rate
 							// clipping at max feed
 							nextFeed = [
-								// (nextFeed * 1.2),
 								(nextFeed * overDrive),
 								maxFeed
 							].minItem;

@@ -92,12 +92,75 @@ a.underDrive_(1);
 a.overDrive_(1);
 )
 
-// Pretty good:
+// // Pretty good:
+// a.underDrive = 0.8
+// a.overDrive	 = 1.3
+// a.dropLag	 = 0.3
+// a.minFeed	 = 20
+// a.maxFeed	 = 4675
+// a.motorInstructionRate = 20
+// a.stateUpdateRate = 8
+// a.maxDistPerSec = 90
+
+a.planningBufGui
+a.plotMotorPositions_(true, -150, 150,plotRefreshRate: 25, plotMode:\linear)
+
+// // pretty good:
+// a.minMoveQueue = 2
+// a.underDrive = 0.8
+// a.overDrive	 = 1.3
+// a.dropLag	 = 0.6
+// a.minFeed	 = 40
+// a.maxFeed	 = 4675
+// a.motorInstructionRate = 10
+// a.stateUpdateRate = 8
+// a.maxDistPerSec = 90
+
+// a.maxAccelX_(85)
+// a.maxAccelY_(85)
+// a.maxAccelZ_(85)
+
+// // slow movement:
+// a.minMoveQueue = 2
+// a.underDrive = 0.8
+// a.overDrive	 = 1.3
+// a.dropLag	 = 0.6
+// a.minFeed	 = 40
+// a.maxFeed = 4675
+// a.motorInstructionRate = 10
+// a.stateUpdateRate = 10
+// a.maxDistPerSec = 90
+//
+// a.maxAccelX_(325)
+// a.maxAccelY_(325)
+// a.maxAccelZ_(325)
+
+// // fast movement:
+// a.minMoveQueue = 2
+// a.underDrive = 0.8
+// a.overDrive	 = 1.2
+// a.dropLag	 = 0.6
+// a.minFeed	 = 40
+// a.maxFeed = 4675
+// a.motorInstructionRate = 10 // this is a save zone note to drop too many instructions
+// a.stateUpdateRate = 10
+// a.maxDistPerSec = 90
+//
+// a.maxAccelX_(125)
+// a.maxAccelY_(225)
+// a.maxAccelZ_(325)
+
+// fast movement:
+a.minMoveQueue = 2
 a.underDrive = 0.8
-a.overDrive	 = 1.3
-a.dropLag	 = 0.3
+a.overDrive	 = 1.2
+a.dropLag	 = 0.55
 a.minFeed	 = 20
-a.maxFeed	 = 4675
-a.motorInstructionRate = 20
-a.stateUpdateRate = 8
-a.maxDegPerSec = 90
+a.maxFeed = 4675
+a.motorInstructionRate = 10 // this is a save zone note to drop too many instructions
+a.stateUpdateRate = 10
+a.maxDistPerSec = 90
+
+a.maxAccelX_(150)
+a.maxAccelY_(150)
+a.maxAccelZ_(150)
