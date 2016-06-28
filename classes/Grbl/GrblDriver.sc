@@ -195,18 +195,23 @@ GrblDriver : Grbl {
 					dDelta = destLastSent.dist(nextTarget);
 
 					nextFeed = dDelta / tDelta; // CHECK THIS
+					nextTarget.postln;
+					postf("time: %\ndist: %\n\tfeed: %\n", tDelta, dDelta, nextFeed);
+
 					nextFeed = [minFeed, nextFeed].maxItem; // clip low bound // TODO check this: how is minfeed determined?
 
-					if (lagging) {
-						// throttle up
-						// NOTE make this a variable
-						// NOTE if this happens multiple times between state updates, it will throttle up this amount every pass
-						nextFeed = nextFeed * 1.1;
-					} {
-						if (starving) {
-							nextFeed = nextFeed * 1.1.reciprocal;
-						}
-					};
+					nextFeed = maxFeed; // debug
+
+					// if (lagging) {
+					// 	// throttle up
+					// 	// NOTE make this a variable
+					// 	// NOTE if this happens multiple times between state updates, it will throttle up this amount every pass
+					// 	nextFeed = nextFeed * 1.1;
+					// } {
+					// 	if (starving) {
+					// 		nextFeed = nextFeed * 1.1.reciprocal;
+					// 	}
+					// };
 
 					// TODO: account for lag caused by accelleration, so feed should be bumped up or something
 

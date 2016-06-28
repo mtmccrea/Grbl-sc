@@ -64,6 +64,8 @@ Grbl : Arduino
 		if( rxBuf.size > 0, {
 			rxBuf.removeAt(0);
 			rxBufsize = rxBuf.sum;
+			rxBuf.postln;
+			rxBufsize.postln;
 			this.changed(\rxSum, rxBufsize);
 		});
 	}
@@ -410,7 +412,7 @@ GrblParser {
 					// grbl.changed(\rxSum, grbl.rxBuf.sum);
 				// } );
 				grbl.rmvOldestMsg;
-				// this.postGRBLinfo(asciiLine); // uncomment to post 'ok'
+				this.postGRBLinfo(asciiLine); // uncomment to post 'ok'
 				break.();
 			};
 
