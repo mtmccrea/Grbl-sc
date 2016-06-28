@@ -37,11 +37,11 @@ GrblPlannerBufView {
 				["dropping instruction", Color.yellow, Color.black]
 			]),
 
-			'streamSizeSl',		Slider().orientation_('horizontal'),
-			'streamSizeTxt',	StaticText().string_("size"),
+			// 'rxSizeSl',		Slider().orientation_('horizontal'),
+			// 'rxSizeTxt',	StaticText().string_("size"),
 
-			'streamSumSl', 		Slider().orientation_('horizontal'),
-			'streamSumTxt',		StaticText().string_("sum"),
+			'rxSumSl', 		Slider().orientation_('horizontal'),
+			'rxSumTxt',		StaticText().string_("sum"),
 		])
 	}
 
@@ -52,13 +52,17 @@ GrblPlannerBufView {
 				HLayout(
 					widgets.starving, widgets.lagging, widgets.dropping,
 				),
+
+				// NOTE this was actually just the number of _instructions_ waiting in the
+				// serial RX buffer, not necessarily what remains in the planning buffer queue.
+				// The only thing that matters re: serial rx buffer is how many characters are in queue (128 max)
+				// HLayout(
+				// 	StaticText().string_("Instruction Queue"),
+				// 	widgets.rxSizeSl, widgets.rxSizeTxt,
+				// ),
 				HLayout(
-					StaticText().string_("Instruction Queue"),
-					widgets.streamSizeSl, widgets.streamSizeTxt,
-				),
-				HLayout(
-					StaticText().string_("Serial Buffer Size"),
-					widgets.streamSumSl, widgets.streamSumTxt
+					StaticText().string_("Serial Rx Size"),
+					widgets.rxSumSl, widgets.rxSumTxt
 				)
 			)
 		);
@@ -75,22 +79,21 @@ GrblPlannerBufView {
 
 		if( who == grbl, {
 			{
-			switch ( what,
+				switch ( what,
+					\starving,	{ widgets.starving.value_(inval.asInt) },
+					\lagging,	{ widgets.lagging.value_(inval.asInt) },
+					\sent,		{ widgets.dropping.value_((inval.asInt - 1).abs) },
 
-				\starving,	{ widgets.starving.value_(inval.asInt) },
-				\lagging,	{ widgets.lagging.value_(inval.asInt) },
-				\sent,		{ widgets.dropping.value_((inval.asInt - 1).abs) },
+					// \rxSize,{
+					// 	widgets.rxSizeSl.value_(inval.linlin(0, 16, 0,1));
+					// 	widgets.rxSizeTxt.string_(inval);
+					// },
 
-				\streamSize,{
-					widgets.streamSizeSl.value_(inval.linlin(0, 16, 0,1));
-					widgets.streamSizeTxt.string_(inval);
-				},
-
-				\streamSum,	{
-					widgets.streamSumSl.value_(inval.linlin(0, 127, 0,1));
-					widgets.streamSumTxt.string_(inval);
-				},
-			)
+					\rxSum,	{
+						widgets.rxSumSl.value_(inval.linlin(0, 127, 0,1));
+						widgets.rxSumTxt.string_(inval);
+					},
+				)
 			}.defer;
 		});
 	}

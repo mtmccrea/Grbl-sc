@@ -2,7 +2,7 @@ Grbl : Arduino
 {
 	classvar <>numInstances = 0;
 
-	var <id, <>stateAction, <streamBuf;
+	var <id, <>stateAction, <rxBuf, <rxBufsize;
 	var <>mPos, <>wPos=0, <>mode, <stateRoutine;
 	var <>postState = false;
 	var <posBus, <writePos = false, <>stateUpdateRate;
@@ -16,7 +16,14 @@ Grbl : Arduino
 		// used to create a unique ID, no need to remove when freed
 		Grbl.numInstances = Grbl.numInstances +1;
 		id = Grbl.numInstances;
-		streamBuf = List();
+
+		// NOTE: rxBuf stored as a list of numbers, each being the
+		// size of the string of each message.  This allows for keepng track
+		// of the total characters in the rx buffer, most importantly for removing
+		// values when notified that a message was processed.
+		rxBuf = List();
+		rxBufsize = 0;
+
 		parser = this.class.parserClass.new(this);
 		mPos = [0,0,0];
 		wPos	 = [0,0,0];
@@ -35,8 +42,8 @@ Grbl : Arduino
 		inputThread = fork { parser.parse };
 	}
 
-	// Note: .send increments the streamBuf with the message character size
-	// use port.putall to bypass the streamBuf
+	// Note: .send increments the rxBuf with the message character size
+	// use port.putall to bypass the rxBuf
 	// more on G-Code commands: http://reprap.org/wiki/G-code
 	send { | aString |
 		var str;
@@ -44,12 +51,27 @@ Grbl : Arduino
 		port.putAll(str);
 
 		// add this message's size to the stream buffer
-		streamBuf.add(str.size); // .size takes the ascii size? "\n".size == 1
-		// postf("adding:\t% from streamBuf\n", str.size);
+		rxBuf.add(str.size); // .size takes the ascii size? "\n".size == 1
+		rxBufsize = rxBuf.sum;
 
 		//GUI update
-		this.changed(\streamSize, streamBuf.size);
-		this.changed(\streamSum, streamBuf.sum);
+		// this.changed(\rxSize, rxBuf.size);
+		this.changed(\rxSum, rxBufsize);
+	}
+
+	// 'ok' received by parser, remove that msg's char count from rxBuf
+	rmvOldestMsg {
+		if( rxBuf.size > 0, {
+			rxBuf.removeAt(0);
+			rxBufsize = rxBuf.sum;
+			this.changed(\rxSum, rxBufsize);
+		});
+	}
+
+	clearRxBuf {
+		rxBuf.clear;
+		rxBufsize = 0;
+		this.changed(\rxSum, rxBufsize);
 	}
 
 	goTo_ { |toX, toY, feed|
@@ -105,12 +127,15 @@ Grbl : Arduino
 
 
 	// NOTE: ? status, ~ cycle start/resume, ! feed hold, and ^X soft-reset
-	// are responded to immediately and so do not need to be tracked in the streamBuf
-	// so use port.putAll (.send adds to the streamBuf)
+	// are responded to immediately and so do not need to be tracked in the rxBuf
+	// so use port.putAll (.send adds to the rxBuf)
 	state		{ port.putAll("?") }
 	pause	{ port.putAll("!") }
 	resume	{ port.putAll("~") }
-	reset		{ port.putAll([24, 120]); streamBuf.clear; } // cmd + x - no CR needed
+	reset		{
+		port.putAll([24, 120]);  // cmd + x - no CR needed
+		this.clearRxBuf;
+	}
 
 	home	{ port.putAll("$H\n") }
 	unlock	{
@@ -256,11 +281,9 @@ Grbl : Arduino
 			stateRoutine.notNil.if(
 				{ stateRoutine.isPlaying.not.if{ stateRoutine.reset.play } },
 				{ stateRoutine = Routine.run({
-					var wait;
-					inf.do{
-						wait = stateUpdateRate.reciprocal;
+					inf.do {
 						this.state;
-						wait.wait
+						stateUpdateRate.reciprocal.wait
 					}
 					})
 				}
@@ -380,12 +403,13 @@ GrblParser {
 			// "ok"
 			if ( asciiLine.asArray == [111, 107] ) {
 
-				if( grbl.streamBuf.size > 0, {
-					grbl.streamBuf.removeAt(0);
-
-					grbl.changed(\streamSize, grbl.streamBuf.size);
-					grbl.changed(\streamSum, grbl.streamBuf.sum);
-				} );
+				// // update running count of the serial rx buffer's size
+				// if( grbl.rxBuf.size > 0, {
+					// grbl.rxBuf.removeAt(0);
+					// grbl.changed(\rxSize, grbl.rxBuf.size);
+					// grbl.changed(\rxSum, grbl.rxBuf.sum);
+				// } );
+				grbl.rmvOldestMsg;
 				// this.postGRBLinfo(asciiLine); // uncomment to post 'ok'
 				break.();
 			};
