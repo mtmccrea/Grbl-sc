@@ -3,7 +3,7 @@ Grbl : Arduino
 	classvar <>numInstances = 0;
 
 	var <id, <>stateAction, <rxBuf, <rxBufsize;
-	var <>mPos, <>wPos=0, <>mode, <stateRoutine;
+	var <>mPos, <>wPos, <>pBuf, <>mode, <stateRoutine;
 	var <>postState = false;
 	var <posBus, <writePos = false, <>stateUpdateRate;
 	var <>server;
@@ -27,6 +27,7 @@ Grbl : Arduino
 		parser = this.class.parserClass.new(this);
 		mPos = [0,0,0];
 		wPos	 = [0,0,0];
+		pBuf = 0;
 
 		// default rate that state will be requested when stateRoutine runs
 		stateUpdateRate = 8;
@@ -493,18 +494,27 @@ GrblParser {
 	---Parse the message from GRBL---
 	asciiLine.asAscii returns line in the format:
 	<Idle,MPos:5.529,0.560,7.000,WPos:1.529,-5.440,-0.000>
+	<Alarm,MPos:0.000,0.000,0.000,WPos:150.000,84.000,0.000,Buf:0>
 	*/
 	parseMotorState { | asciiLine |
-		var split, mode, mPos, wPos;
+		var split, mode, mPos, wPos, pBuf;
+
+		//debug
+		// asciiLine.asAscii.postln;
+
 
 		split = asciiLine.asAscii.split($,);
 		mode = split[0].drop(1);
 		mPos = split[1..3].put(0, split[1].drop(5)).asFloat;
 		wPos = split[4..6].put(0, split[4].drop(5)).asFloat;
+		pBuf = split[7].drop(4).asInt;
+
+		grbl.postState.if{ postf("pBuf  %\n", pBuf) }; // debug
 
 		// store the mode/pos back to the arduionoGRBL state vars
 		grbl.wPos = wPos;
 		grbl.mPos = mPos;
+		grbl.pBuf = pBuf;
 
 		// check former versus new mode state
 		if( grbl.mode != mode, {
@@ -514,6 +524,7 @@ GrblParser {
 
 		grbl.changed(\wPos, wPos);
 		grbl.changed(\mPos, mPos);
+		grbl.changed(\pBuf, pBuf);
 
 		grbl.writePos.if { grbl.posBus.set(wPos[0..1]) };
 

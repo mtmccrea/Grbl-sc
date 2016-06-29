@@ -33,6 +33,7 @@ GrblDriver : Grbl {
 	var maxRxBufsize = 127;
 	var <ui;
 	var <timeLastSent, <destLastSent;
+	var <>throttle=1;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving;
@@ -194,13 +195,24 @@ GrblDriver : Grbl {
 					tDelta = now - timeLastSent;
 					dDelta = destLastSent.dist(nextTarget);
 
-					nextFeed = dDelta / tDelta; // CHECK THIS
-					nextTarget.postln;
-					postf("time: %\ndist: %\n\tfeed: %\n", tDelta, dDelta, nextFeed);
+					nextFeed = dDelta / tDelta * 60; // CHECK THIS
 
-					nextFeed = [minFeed, nextFeed].maxItem; // clip low bound // TODO check this: how is minfeed determined?
+					if (nextFeed > maxFeed) {
+						// shorten the distance to match what can be covered at maxFeed
+						var scaleDown;
 
-					nextFeed = maxFeed; // debug
+						scaleDown = maxFeed / nextFeed;
+						nextTarget = (nextTarget - destLastSent) * scaleDown + destLastSent;
+						nextFeed = maxFeed;
+					};
+
+					// nextFeed = [minFeed, nextFeed].maxItem; // clip low bound // TODO check this: how is minfeed determined?
+					// nextFeed = maxFeed; // debug
+
+					// postf("time: %\ndist: %\n\tfeed: %\n", tDelta, dDelta, nextFeed);
+					postf("feed: % | %\n", nextFeed, nextFeed * throttle);
+
+					nextFeed = nextFeed * throttle;
 
 					// if (lagging) {
 					// 	// throttle up
@@ -407,7 +419,7 @@ GrblDriver : Grbl {
 			followResponderXY = nil;
 		};
 		followSynthXY !? {followSynthXY.pause};
-		plannerView !? {plannerView.free};
+		// plannerView !? {plannerView.free};
 	}
 
 	// Go to a postion over specific duration.

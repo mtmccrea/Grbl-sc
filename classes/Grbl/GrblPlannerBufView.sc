@@ -41,7 +41,11 @@ GrblPlannerBufView {
 			// 'rxSizeTxt',	StaticText().string_("size"),
 
 			'rxSumSl', 		Slider().orientation_('horizontal'),
-			'rxSumTxt',		StaticText().string_("sum"),
+			'rxSumTxt',	StaticText().string_("0"),
+
+			'pBufSl', 		Slider().orientation_('horizontal'),
+			'pBufTxt',		StaticText().string_("0"),
+
 		])
 	}
 
@@ -63,6 +67,10 @@ GrblPlannerBufView {
 				HLayout(
 					StaticText().string_("Serial Rx Size"),
 					widgets.rxSumSl, widgets.rxSumTxt
+				),
+				HLayout(
+					StaticText().string_("Planning Buffer"),
+					widgets.pBufSl, widgets.pBufTxt
 				)
 			)
 		);
@@ -93,6 +101,10 @@ GrblPlannerBufView {
 						widgets.rxSumSl.value_(inval.linlin(0, 127, 0,1));
 						widgets.rxSumTxt.string_(inval);
 					},
+					\pBuf, {
+						widgets.pBufSl.value_(inval.linlin(0, 17, 0,1));
+						widgets.pBufTxt.string_(inval);
+					}
 				)
 			}.defer;
 		});
