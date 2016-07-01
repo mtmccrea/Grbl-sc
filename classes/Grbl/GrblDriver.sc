@@ -33,7 +33,8 @@ GrblDriver : Grbl {
 	var maxRxBufsize = 127;
 	var <ui;
 	var <timeLastSent, <destLastSent;
-	var <>throttle=1;
+	var <>throttle=1, <>autoThrottle=0.05, throttleCount=0, 	outOfRangeVal;
+	var <>plannerMin=2, <>plannerMax=8;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving;
@@ -78,7 +79,7 @@ GrblDriver : Grbl {
 		// so initLFO driving before creating gui
 		fork( {
 			var cond = Condition();
-			this.initLfoDriving( finishedCond: cond );
+			this.initLfoDriving(-45, 45, -30, 30, finishedCond: cond );
 			cond.wait;
 
 			ui = this.class.guiClass.new(this, *args);
@@ -176,6 +177,7 @@ GrblDriver : Grbl {
 				var nextTarget, nextFeed;
 				// var droppedPrev = false;
 				var now, dDelta, tDelta;
+				var throttle_adj;
 
 				if (mode != "Alarm") {
 					var nextTarget;
@@ -210,9 +212,70 @@ GrblDriver : Grbl {
 					// nextFeed = maxFeed; // debug
 
 					// postf("time: %\ndist: %\n\tfeed: %\n", tDelta, dDelta, nextFeed);
-					postf("feed: % | %\n", nextFeed, nextFeed * throttle);
+					// postf("feed: % | %\n", nextFeed, nextFeed * throttle);
 
-					nextFeed = nextFeed * throttle;
+					if (pBuf.inRange(plannerMin, plannerMax).not) {
+
+						if (pBuf < plannerMin) {
+							// planner is starving, slow down
+
+							"Planner starving, throttling down".warn;
+							if (outOfRangeVal.isNil) { // just crossed threshold, ramp up one level
+								outOfRangeVal = pBuf;
+								throttleCount = throttleCount+1;
+								"...threshold crossed, slowing down.".postln; // debug
+							} {
+								if (pBuf < outOfRangeVal) { // pBuf dropped yet another level
+									throttleCount = throttleCount+1;
+									outOfRangeVal = pBuf;
+									"......slowing down more.".postln; // debug
+								};
+							};
+							throttle_adj = (1-autoThrottle).pow(throttleCount);
+							nextFeed = nextFeed * throttle_adj;
+						} {
+							// (pBuf > plannerMin): planner count is too high, speed up
+
+							"Planner filling up, throttling up".warn;
+							if (outOfRangeVal.isNil) { // just crossed threshold, ramp down one level
+								outOfRangeVal = pBuf;
+								throttleCount = throttleCount-1;
+								"...threshold crossed, speeding up.".postln; // debug
+							} {
+								if (pBuf > outOfRangeVal) { // pBuf increased yet another level
+									throttleCount = throttleCount-1;
+									outOfRangeVal = pBuf;
+									"......speeding up more.".postln; // debug
+								};
+							};
+							throttle_adj = (1+autoThrottle).pow(throttleCount.abs);
+							nextFeed = nextFeed * throttle_adj;
+						}
+					} {
+						// planner count is in range
+
+						if (throttleCount != 0) {
+							// was previously throttled
+							if (throttleCount > 0) {
+								// was throttled down (was starving), speed back up
+								throttleCount = throttleCount-1;
+								throttle_adj = (1-autoThrottle).pow(throttleCount);
+								nextFeed = nextFeed * throttle_adj;
+								"speeding back up".postln; // debug
+							} {
+								// was throttled up (planner full), slow back down
+								throttleCount = throttleCount+1;
+								throttle_adj = (1+autoThrottle).pow(throttleCount.abs);
+								nextFeed = nextFeed * throttle_adj;
+								"slowing back down".postln; // debug
+							};
+						};
+						outOfRangeVal = nil; // reset out-of-range trigger
+					};
+					// debug
+					throttle_adj !? {postf("adjusted factor: %\n", throttle_adj)};
+
+					nextFeed = nextFeed * throttle; // user controlled throttle
 
 					// if (lagging) {
 					// 	// throttle up
@@ -363,10 +426,10 @@ GrblDriver : Grbl {
 			this.send(cmd);
 			timeLastSent = when ?? {Main.elapsedTime};
 			destLastSent = Point(destX, destY);
-			"feed: ".post; feed.postln; // debug
+			// "feed: ".post; feed.postln; // debug
 			^true
 		} {
-			"rx buf FULL not sending".warn; // debug
+			"RX buffer FULL! Not sending instruction".warn; // debug
 			^false
 		};
 	}
@@ -419,6 +482,8 @@ GrblDriver : Grbl {
 			followResponderXY = nil;
 		};
 		followSynthXY !? {followSynthXY.pause};
+		outOfRangeVal = nil;
+		throttleCount = 0;
 		// plannerView !? {plannerView.free};
 	}
 
@@ -427,12 +492,14 @@ GrblDriver : Grbl {
 	// NOTE: doesn't currently account for acceleration, so faster moves
 	// will actually take a bit longer than expected
 	goToDur_ { |toX, toY, duration|
-		var distX, distY, maxDist, feedRateSec, feed;
+		// var distX, distY, maxDist,
+		var dist, feedRateSec, feed;
 
-		distX = (toX - wPos[0]).abs;
-		distY = (toY - wPos[1]).abs;
-		maxDist = max(distX, distY);
-		feedRateSec = maxDist / duration; // dist/sec
+		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
+		// distX = (toX - wPos[0]).abs;
+		// distY = (toY - wPos[1]).abs;
+		// maxDist = max(distX, distY);
+		feedRateSec = dist / duration; // dist/sec
 		feed = (feedRateSec * 60).clip(minFeed, maxFeed); //dist/min
 
 		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
