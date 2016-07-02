@@ -528,6 +528,6 @@ GrblParser {
 
 		grbl.writePos.if { grbl.posBus.set(wPos[0..1]) };
 
-		^[mode, wPos, mPos]
+		^[mode, wPos, mPos, pBuf]
 	}
 }
