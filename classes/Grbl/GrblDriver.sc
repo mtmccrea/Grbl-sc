@@ -10,15 +10,16 @@
 // TODO: many of these params are machine-specific, subclass for each machine, or be able to read in settings file
 
 GrblDriver : Grbl {
-	var <grbl; // copyArgs
+	// copyArgs
+	var <grbl;
 
 	// the fallowing variables must be defined in .initSystemParams
-	var <>maxDistPerSec; 		// e.g. 180 / 3.2702541628;	// seconds to go 180 degrees
-	var <>maxLagDist; 			// max units that the world can lag behind a control signal
+	var <>maxDistPerSec; 			// e.g. 180 / 3.2702541628;	// seconds to go 180 degrees
+	var <>maxLagDist; 				// max units that the world can lag behind a control signal
 	var <minFeed, <maxFeed;
 	var <>underDrive, <>overDrive;
-	var <>dropLag;		// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
-	var <motorInstructionRate; // rate to send new motor destinations
+	var <>dropLag;					// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
+	var <motorInstructionRate;	// rate to send new motor destinations
 	var <>minMoveQueue;		// min moves queue'd up in buffer
 
 	var <>catchSoftLimit	= true;		// check location before sending to GRBL to catch before soft limit to prevent ALARM
@@ -39,7 +40,7 @@ GrblDriver : Grbl {
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving;
 	var <lfoControlX, <lfoControlY, <plotterX, <plotterY;
-	var <lfoLowX, lfoHighX, <lfoLowY, lfoHighY;
+	var <lfoLowX, <lfoHighX, <lfoLowY, <lfoHighY;
 	var <centerX, <centerY, <rangeX, <rangeY;
 
 	// var <>debug;
@@ -78,8 +79,18 @@ GrblDriver : Grbl {
 		// for the moment guis are expected to have lfo support
 		// so initLFO driving before creating gui
 		fork( {
-			var cond = Condition();
-			this.initLfoDriving(-45, 45, -30, 30, finishedCond: cond );
+			var cond, xrange, yrange, xlo, xhi, ylo, yhi;
+			cond = Condition();
+
+			// this.initLfoDriving(-45, 45, -30, 30, finishedCond: cond );
+			// init to half the machine range, centered
+			xrange = xLimitHigh - xLimitLow;
+			yrange = yLimitHigh - yLimitLow;
+			xlo = xLimitLow + (xrange *0.25);
+			xhi = xLimitLow + (xrange *0.75);
+			ylo = yLimitLow + (yrange *0.25);
+			yhi = yLimitLow + (yrange *0.75);
+			this.initLfoDriving(xlo, xhi, ylo, yhi , finishedCond: cond );
 			cond.wait;
 
 			ui = this.class.guiClass.new(this, *args);
@@ -184,8 +195,6 @@ GrblDriver : Grbl {
 
 					nextTarget = msg[3..4].asPoint; // "current" target position (bus value)
 
-					// TODO: (also check if there is room in planning buffer-read in with '?' message)
-
 					// 	starving = (rxBuf.size < minMoveQueue);
 					// 	this.changed(\starving, starving);
 					//
@@ -253,7 +262,6 @@ GrblDriver : Grbl {
 						}
 					} {
 						// planner count is in range
-
 						if (throttleCount != 0) {
 							// was previously throttled
 							if (throttleCount > 0) {
@@ -276,17 +284,6 @@ GrblDriver : Grbl {
 					throttle_adj !? {postf("adjusted factor: %\n", throttle_adj)};
 
 					nextFeed = nextFeed * throttle; // user controlled throttle
-
-					// if (lagging) {
-					// 	// throttle up
-					// 	// NOTE make this a variable
-					// 	// NOTE if this happens multiple times between state updates, it will throttle up this amount every pass
-					// 	nextFeed = nextFeed * 1.1;
-					// } {
-					// 	if (starving) {
-					// 		nextFeed = nextFeed * 1.1.reciprocal;
-					// 	}
-					// };
 
 					// TODO: account for lag caused by accelleration, so feed should be bumped up or something
 

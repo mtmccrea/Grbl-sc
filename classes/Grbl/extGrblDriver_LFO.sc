@@ -108,6 +108,7 @@
 		this.changed(\centerY, centerY);
 	}
 
+	// fixed at center
 	rangeX_ { |rangeDegree|
 		var lo, hi, clipped = false;
 		rangeDegree ?? {"No range specified".error; ^this};
@@ -138,6 +139,7 @@
 		};
 	}
 
+	// fixed at center
 	rangeY_ { |rangeDegree|
 		var lo, hi, clipped = false;
 		rangeDegree ?? {"No range specified".error};

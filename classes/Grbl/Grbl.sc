@@ -77,6 +77,8 @@ Grbl : Arduino
 		this.changed(\rxSum, rxBufsize);
 	}
 
+	// NOTE: no bound/feed checking at this point, that must happen
+	// prior to calling goTo_
 	goTo_ { |toX, toY, feed|
 		var cmd = "G01";
 		toX !? {cmd = cmd ++ "X" ++ toX};
