@@ -511,7 +511,7 @@ GrblParser {
 		wPos = split[4..6].put(0, split[4].drop(5)).asFloat;
 		pBuf = split[7].drop(4).asInt;
 
-		grbl.postState.if{ postf("pBuf  %\n", pBuf) }; // debug
+		// grbl.postState.if{ postf("pBuf  %\n", pBuf) }; // debug
 
 		// store the mode/pos back to the arduionoGRBL state vars
 		grbl.wPos = wPos;

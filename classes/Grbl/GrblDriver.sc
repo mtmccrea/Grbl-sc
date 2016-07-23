@@ -38,7 +38,7 @@ GrblDriver : Grbl {
 	var <>plannerMin=2, <>plannerMax=8;
 
 	// LFO driving vars
-	var lfoDrivingEnabled = false, <driving;
+	var lfoDrivingEnabled = false, <driving=false;
 	var <lfoControlX, <lfoControlY, <plotterX, <plotterY;
 	var <lfoLowX, <lfoHighX, <lfoLowY, <lfoHighY;
 	var <centerX, <centerY, <rangeX, <rangeY;

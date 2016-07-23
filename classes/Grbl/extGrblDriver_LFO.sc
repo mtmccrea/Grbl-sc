@@ -173,6 +173,9 @@
 		};
 	}
 
+	bounds {
+		^Rect( lfoLowX, lfoLowY,  rangeX, rangeY)
+	}
 
 	plotDriver {
 		lfoDrivingEnabled.if({
