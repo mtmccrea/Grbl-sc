@@ -20,7 +20,7 @@ GrblDriver : Grbl {
 	var <>underDrive, <>overDrive;
 	var <>dropLag;					// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
 	var <motorInstructionRate;	// rate to send new motor destinations
-	var <>minMoveQueue;		// min moves queue'd up in buffer
+	// var <>minMoveQueue;		// min moves queue'd up in buffer
 
 	var <>catchSoftLimit	= true;		// check location before sending to GRBL to catch before soft limit to prevent ALARM
 	var <softClipMargin 	= 0.5;		// offset from soft limits to clip before GRBL soft limit alarm
@@ -30,12 +30,12 @@ GrblDriver : Grbl {
 
 	var <followSynthXY, <followDefXY, <followResponderXY;
 	var <starving = false, <lagging = false;
-	var <plannerView, <feedSpec;
+	var <plannerView; //, <feedSpec;
 	var maxRxBufsize = 127;
 	var <ui;
 	var <timeLastSent, <destLastSent;
-	var <>throttle=1, <>autoThrottle=0.05, throttleCount=0, 	outOfRangeVal;
-	var <>plannerMin=2, <>plannerMax=8;
+	var <throttle=1, <>autoThrottle=0.05, throttleCount=0, outOfRangeVal;
+	var <>plannerMin=2, <>plannerMax=5;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving=false;
@@ -63,7 +63,7 @@ GrblDriver : Grbl {
 
 		parser = Grbl.parserClass.new(this);
 		mPos = [0,0,0];
-		wPos	 = [0,0,0];
+		wPos = [0,0,0];
 		// default rate that state will be requested when stateRoutine runs
 		stateUpdateRate = 8;
 
@@ -102,7 +102,7 @@ GrblDriver : Grbl {
 
 	prPushParams {
 		this.updateSoftClipLimits;
-		feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
+		// feedSpec = ControlSpec(minFeed, maxFeed, default: 500);
 	}
 
 	planningBufGui { plannerView = GrblPlannerBufView(this) }
@@ -188,7 +188,6 @@ GrblDriver : Grbl {
 				var nextTarget, nextFeed;
 				// var droppedPrev = false;
 				var now, dDelta, tDelta;
-				var throttle_adj;
 
 				if (mode != "Alarm") {
 					var nextTarget;
@@ -217,73 +216,87 @@ GrblDriver : Grbl {
 						nextFeed = maxFeed;
 					};
 
-					// nextFeed = [minFeed, nextFeed].maxItem; // clip low bound // TODO check this: how is minfeed determined?
-					// nextFeed = maxFeed; // debug
+					if (pBuf.inRange(plannerMin, plannerMax).not)
+					{	// planning buffer out of range
 
-					// postf("time: %\ndist: %\n\tfeed: %\n", tDelta, dDelta, nextFeed);
-					// postf("feed: % | %\n", nextFeed, nextFeed * throttle);
+						if (pBuf < plannerMin)
+						{	// planner is starving, slow down
 
-					if (pBuf.inRange(plannerMin, plannerMax).not) {
+							// "Planner starving, throttling down".warn;
 
-						if (pBuf < plannerMin) {
-							// planner is starving, slow down
-
-							"Planner starving, throttling down".warn;
-							if (outOfRangeVal.isNil) { // just crossed threshold, ramp up one level
+							if (outOfRangeVal.isNil)
+							{	// just crossed threshold, ramp up one level
 								outOfRangeVal = pBuf;
 								throttleCount = throttleCount+1;
-								"...threshold crossed, slowing down.".postln; // debug
+								"...starving, slowing down.".postln; // debug
 							} {
-								if (pBuf < outOfRangeVal) { // pBuf dropped yet another level
+								if (pBuf < outOfRangeVal)
+								{	// pBuf dropped yet another level
 									throttleCount = throttleCount+1;
 									outOfRangeVal = pBuf;
 									"......slowing down more.".postln; // debug
 								};
 							};
-							throttle_adj = (1-autoThrottle).pow(throttleCount);
-							nextFeed = nextFeed * throttle_adj;
-						} {
-							// (pBuf > plannerMin): planner count is too high, speed up
 
-							"Planner filling up, throttling up".warn;
-							if (outOfRangeVal.isNil) { // just crossed threshold, ramp down one level
+							throttle = (1-autoThrottle).pow(throttleCount);
+
+						} {	// (pBuf > plannerMax): planner count is too high, speed up
+
+							// "Planner filling up, throttling up".warn;
+
+							if (outOfRangeVal.isNil)
+							{	// just crossed threshold, ramp down one level
 								outOfRangeVal = pBuf;
 								throttleCount = throttleCount-1;
-								"...threshold crossed, speeding up.".postln; // debug
+								"...planner filling, speeding up.".postln; // debug
 							} {
-								if (pBuf > outOfRangeVal) { // pBuf increased yet another level
+								if (pBuf > outOfRangeVal)
+								{	// pBuf increased yet another level
 									throttleCount = throttleCount-1;
 									outOfRangeVal = pBuf;
 									"......speeding up more.".postln; // debug
 								};
 							};
-							throttle_adj = (1+autoThrottle).pow(throttleCount.abs);
-							nextFeed = nextFeed * throttle_adj;
-						}
-					} {
-						// planner count is in range
+
+							throttle = (1+autoThrottle).pow(throttleCount.abs);
+						};
+
+						this.changed(\throttle, throttle);
+
+					} {  // planner count is in range
+
 						if (throttleCount != 0) {
 							// was previously throttled
-							if (throttleCount > 0) {
-								// was throttled down (was starving), speed back up
+							if (throttleCount > 0)
+							{	// was throttled down (was starving), speed back up
 								throttleCount = throttleCount-1;
-								throttle_adj = (1-autoThrottle).pow(throttleCount);
-								nextFeed = nextFeed * throttle_adj;
+								throttle = (1-autoThrottle).pow(throttleCount);
 								"speeding back up".postln; // debug
-							} {
-								// was throttled up (planner full), slow back down
+
+							} { // was throttled up (planner full), slow back down
+
 								throttleCount = throttleCount+1;
-								throttle_adj = (1+autoThrottle).pow(throttleCount.abs);
-								nextFeed = nextFeed * throttle_adj;
+								throttle = (1+autoThrottle).pow(throttleCount.abs);
 								"slowing back down".postln; // debug
 							};
+							this.changed(\throttle, throttle);
 						};
-						outOfRangeVal = nil; // reset out-of-range trigger
-					};
-					// debug
-					throttle_adj !? {postf("adjusted factor: %\n", throttle_adj)};
 
+						outOfRangeVal = nil; // reset out-of-range trigger
+						throttle = 1;
+					};
+
+					// postf("adjusted factor: %\n", throttle); // debug
+
+
+					// TODO:throttle - is this always set? keep throttle as separate user-settable var?
 					nextFeed = nextFeed * throttle; // user controlled throttle
+
+					// minFeed is important when following a static value:
+					// with little or no distance covered nextFeed can get very low,
+					// which essentially backs up all the following instructions,
+					// clogging the planning and rx buffer
+					nextFeed = nextFeed.clip(minFeed,maxFeed);
 
 					// TODO: account for lag caused by accelleration, so feed should be bumped up or something
 
@@ -296,8 +309,10 @@ GrblDriver : Grbl {
 					);
 					this.changed(\sent, sent.asInt);
 
+					// "feed ".post; nextFeed.round(0.001).postln; // debug
+
 				} {
-					"Won't follow in ALARM mode".postln
+					"Won't follow in ALARM mode".postln;
 				};
 
 				// if (mode != "Alarm") {
@@ -460,14 +475,14 @@ GrblDriver : Grbl {
 
 	minFeed_ { |feedRate|
 		minFeed = feedRate;
-		feedSpec.minval_(minFeed);
-		feedSpec.default_(minFeed + (maxFeed-minFeed).half);
+		// feedSpec.minval_(minFeed);
+		// feedSpec.default_(minFeed + (maxFeed-minFeed).half);
 	}
 
 	maxFeed_ { |feedRate|
 		maxFeed = feedRate;
-		feedSpec.maxval_(maxFeed);
-		feedSpec.default_(minFeed + (maxFeed-minFeed).half);
+		// feedSpec.maxval_(maxFeed);
+		// feedSpec.default_(minFeed + (maxFeed-minFeed).half);
 	}
 
 

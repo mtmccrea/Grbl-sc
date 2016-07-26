@@ -12,7 +12,7 @@ ProtoDriver : GrblDriver {
 		underDrive		= 1.0;
 		overDrive			= 1.1;
 		dropLag 			= 0.7;	// if a move is skipped, shorten the next one so it doesn't have to make up the full distance
-		minMoveQueue	= 2;		// min moves queue'd up in buffer
+		// minMoveQueue	= 2;		// min moves queue'd up in buffer
 		motorInstructionRate = 45; // rate to send new motor destinations
 
 		// max travel limits, in world coordinates
