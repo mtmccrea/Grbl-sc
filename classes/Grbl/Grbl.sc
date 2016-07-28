@@ -84,6 +84,7 @@ Grbl : Arduino
 		toX !? {cmd = cmd ++ "X" ++ toX};
 		toY !? {cmd = cmd ++ "Y" ++ toY};
 		feed !? {cmd = cmd ++ "F" ++ feed};
+		postf("sending: %, %, %\n", toX, toY, feed);
 		this.send(cmd);
 	}
 
@@ -119,16 +120,25 @@ Grbl : Arduino
 	// NOTE: doesn't currently account for acceleration, so faster moves
 	// will actually take a bit longer than expected
 	goToDur_ { |toX, toY, duration|
-		var distX, distY, maxDist, feedRateSec, feed;
+		var dist, feedRateSec, feed;
 
-		distX = (toX - wPos[0]).abs;
-		distY = (toY - wPos[1]).abs;
-		maxDist = max(distX, distY);
-		feedRateSec = maxDist / duration; // dist/sec
-		feed = (feedRateSec * 60); //dist/min
+		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
+		feedRateSec = dist / duration; // dist/sec
+		feed = (feedRateSec * 60);
 
-		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
+		this.goTo_( toX, toY, feed );
 	}
+	// goToDur_ { |toX, toY, duration|
+	// 	var distX, distY, maxDist, feedRateSec, feed;
+	//
+	// 	distX = (toX - wPos[0]).abs;
+	// 	distY = (toY - wPos[1]).abs;
+	// 	maxDist = max(distX, distY);
+	// 	feedRateSec = maxDist / duration; // dist/sec
+	// 	feed = (feedRateSec * 60); //dist/min
+	//
+	// 	this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
+	// }
 
 
 	// NOTE: ? status, ~ cycle start/resume, ! feed hold, and ^X soft-reset

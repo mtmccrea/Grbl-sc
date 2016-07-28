@@ -288,8 +288,11 @@ GrblDriver : Grbl {
 
 					// postf("adjusted factor: %\n", throttle); // debug
 
+					// TODO: consider slowing back down at a slower rate
+					// to get in the middle of bounds
+					// Also - preemptively throttle up when approaching the upper
+					// bound of the safe planner range
 
-					// TODO:throttle - is this always set? keep throttle as separate user-settable var?
 					nextFeed = nextFeed * throttle; // user controlled throttle
 
 					// minFeed is important when following a static value:
@@ -504,17 +507,13 @@ GrblDriver : Grbl {
 	// NOTE: doesn't currently account for acceleration, so faster moves
 	// will actually take a bit longer than expected
 	goToDur_ { |toX, toY, duration|
-		// var distX, distY, maxDist,
 		var dist, feedRateSec, feed;
 
 		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
-		// distX = (toX - wPos[0]).abs;
-		// distY = (toY - wPos[1]).abs;
-		// maxDist = max(distX, distY);
 		feedRateSec = dist / duration; // dist/sec
-		feed = (feedRateSec * 60).clip(minFeed, maxFeed); //dist/min
-
-		this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
+		feed = (feedRateSec * 60).clip(minFeed, maxFeed); // dist/min
+		postf("goToDur feed: %\n", feed);
+		this.goTo_( toX, toY, feed );
 	}
 
 	// To set bounds for both plotters and for catching moves that would
