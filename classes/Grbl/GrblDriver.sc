@@ -35,7 +35,7 @@ GrblDriver : Grbl {
 	var <ui;
 	var <timeLastSent, <destLastSent;
 	var <throttle=1, <>autoThrottle=0.05, throttleCount=0, outOfRangeVal;
-	var <>plannerMin=2, <>plannerMax=5;
+	var <>plannerMin=3, <>plannerMax=7;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving=false;
@@ -203,9 +203,11 @@ GrblDriver : Grbl {
 
 					now = Main.elapsedTime;
 					tDelta = now - timeLastSent;
-					dDelta = destLastSent.dist(nextTarget);
 
-					nextFeed = dDelta / tDelta * 60; // CHECK THIS
+					dDelta = this.calcDistDelta(destLastSent, nextTarget);
+					// dDelta = destLastSent.dist(nextTarget);
+
+					nextFeed = dDelta / tDelta * 60;
 
 					if (nextFeed > maxFeed) {
 						// shorten the distance to match what can be covered at maxFeed
@@ -415,6 +417,10 @@ GrblDriver : Grbl {
 		};
 	}
 
+	calcDistDelta { |prevPnt, nextPnt|
+		^prevPnt.dist(nextPnt);
+	}
+
 	// used by followSerialBufXY_
 	submitMoveXY { |toX, toY, feed, when|
 		var cmd, size, destX, destY;
@@ -510,6 +516,29 @@ GrblDriver : Grbl {
 		var dist, feedRateSec, feed;
 
 		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
+
+		// TODO: get this out of here - it's for coreXY movement ONLY
+		// isolate it in DMDriver: better probably to scale the feed rate, not change the distance
+		dist = dist * 2.sqrt;
+
+		// // calculate the distance in terms of motor feed, not pen head movement
+		// f = { |toX, toY, wPosX, wPosY|
+		// 	var dX, dY, dA, dB, dist;
+		// 	dX = toX - wPosX;
+		// 	dY = toY - wPosY;
+		// 	dA = dX+dY;
+		// 	dB = dX-dY;
+		//
+		// 	// dist = hypot((0.5*(dA+dB)), (0.5*(dA-dB)));
+		// 	dist = hypot(dA, dB);
+		// 	[dA, dB];
+		// 	[dist, Point(toX, toY).dist(Point(wPosX, wPosY))]
+		// }
+		//
+		// f.(-5, -10, -25, -5)
+		// f.(-5, -5, -15, -10)
+		// f.(-5, -5, -5, -10)
+
 		feedRateSec = dist / duration; // dist/sec
 		feed = (feedRateSec * 60).clip(minFeed, maxFeed); // dist/min
 		postf("goToDur feed: %\n", feed);
