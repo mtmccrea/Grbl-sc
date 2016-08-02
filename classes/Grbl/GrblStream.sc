@@ -6,6 +6,7 @@ GrblStream {
 	var <feedOverride=false; // true ignore's path's feeds
 	var <defaultFeed, <playTask;
 	var <streaming=false;
+	var <startIdx=0, endIdx= -1;
 
 	*new { |aGrblDriver|
 		^super.newCopyArgs(aGrblDriver).init;
@@ -21,14 +22,15 @@ GrblStream {
 
 	init {
 		playTask = Task({
-			var pathCnt = 0; // index of the path pointer
+			var pathCnt;// = 0; // index of the path pointer
 			var nextTarget;
 			// give it enough headroom from 17
 			// ~advanceWaittime.reciprocal - stateUpdateRate
 			var plannerMax=6;
 			var firstFeed;
-			var sent;
+			var sent, end;
 
+			pathCnt = startIdx;
 
 			/* Initialize feed and execute the first move */
 
@@ -58,9 +60,11 @@ GrblStream {
 			).throw };
 			pathCnt = pathCnt + 1;
 
+			end = this.endIdx;
+
 			/* Execute the rest of the path score */
 			while ({
-				pathCnt < path.size
+				pathCnt <= end
 			}, {
 				if (driver.mode != "Alarm") {
 					var sent = false;
@@ -84,12 +88,12 @@ GrblStream {
 
 						if (sent) {
 
-								// postf("sent %: % \t% \t%\n",
-								// 	pathCnt,
-								// 	nextTarget[0].round(0.001),
-								// 	nextTarget[1].round(0.001),
-								// 	nextTarget[2] !? {nextTarget[2].round(1)} // ~feed, nil is ok
-								// );
+							// postf("sent %: % \t% \t%\n",
+							// 	pathCnt,
+							// 	nextTarget[0].round(0.001),
+							// 	nextTarget[1].round(0.001),
+							// 	nextTarget[2] !? {nextTarget[2].round(1)} // ~feed, nil is ok
+							// );
 							pathCnt = pathCnt+1;
 						};
 					};
@@ -176,27 +180,44 @@ GrblStream {
 		}
 	}
 
+	startIdx_{ |idx|
+		startIdx = idx.clip(0, path.size-1);
+		if (startIdx>this.endIdx) {"startIdx is greater than endIdx".warn};
+		this.changed(\startIdx, startIdx);
+	}
+
+	endIdx_{ |idx|
+		endIdx = idx.clip(-1, path.size-1);
+		if (startIdx>this.endIdx) {"endIdx is less than startIdx".warn};
+		this.changed(\endIdx, endIdx);
+	}
+
+	endIdx {^if (endIdx == -1) {path.size-1} {endIdx}}
+
+	length {this.endIdx+1-startIdx}
+
 	// approx time to execute path
 	duration {
-		var duration=0, lastPnt;
+		var duration=0, lastPnt, idx=1;
 
 		path ?? {Error("No movement path has been set").throw};
 
-		if (path[0][2].isNil and: defaultFeed.isNil) {
+		if (path[startIdx][2].isNil and: defaultFeed.isNil) {
 			Error("First move has no feedrate, and defaultFeed is undefined, cannot calculate path duration.").throw;
 		};
 
 		lastPnt = Point(
-			path[0][0],
-			path[0][1] ?? {Error("No Y coordinate defined in the first move").throw};
+			path[startIdx][0],
+			path[startIdx][1] ?? {Error("No Y coordinate defined in the first move").throw};
 		);
 
-		path.drop(1).do{
-			|xyf|
-			var feed, thisPnt, dist, dur;
+		(this.length-1).do{
+			// path.drop(1).do{
+			// |xyf|
+			var feed, thisPnt, dist, dur, xyf;
+			xyf = path(idx);
 
 			feed = if (feedOverride) {defaultFeed} {xyf[2] ?? defaultFeed};
-			feed.postln;
 			thisPnt = Point(xyf[0], xyf[1] ?? lastPnt.y);
 
 			dist = lastPnt.dist(thisPnt) * 2.sqrt; // TODO: 2.sqrt for HBOT configuration
@@ -204,6 +225,7 @@ GrblStream {
 
 			duration = duration + dur;
 			lastPnt = thisPnt;
+			idx = idx+1;
 		};
 		"Note: this duration applies to coreXY configuration".warn;
 		^duration
@@ -213,8 +235,8 @@ GrblStream {
 		path ?? {Error("No movement path has been set").throw};
 
 		driver.goTo_(
-			path[0][0],
-			path[0][1] ?? {Error("No Y coordinate defined in the first move").throw},
+			path[startIdx][0],
+			path[startIdx][1] ?? {Error("No Y coordinate defined in the first move").throw},
 			feed ?? defaultFeed
 		)
 	}
@@ -248,4 +270,8 @@ GrblStream {
 		this.changed(\feedOverride, bool);
 	}
 
+	getPnt { |idx|
+		path ?? {Error("No movement path has been set").throw};
+		^Point(path[idx][0], path[idx][1])
+	}
 }
