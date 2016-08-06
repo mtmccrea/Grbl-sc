@@ -535,7 +535,9 @@ HistoryList {
 }*/
 
 /*  Testing
-h = HistoryList(0.3, 0.3);
+h = HistoryList(0.1, 0.1);
+
+h.maxSize = 12
 
 h.minPeriod = 0.3;
 h.minDist = 0.3;
@@ -553,16 +555,38 @@ f = fork {
 		"adding ".post;
 		vals = [rrand(0.1, 0.7), rrand(0.1, 0.7)].postln;
 		h.add(*vals);
-		rrand(0.1, 0.7).wait
+		rrand(0.1, 0.4).wait
 	}
 }
 )
 
 f.stop
 
+h.now
+h.size
 h.list
 h.times
 h.size
 h.maxTime
 h.now
+
+h.clear
+
+h.times.size
+h.list.size
+h.times.last
+
+h.times[19..]
+h.times[20]
+
+a = h.itemsBefore(10)
+a = h.itemsAfter(40)
+
+h.times[h.indexBefore(15)]
+h.times[h.indexAfter(15)]
+
+a = h.itemsBefore(25)
+h.times[h.indexBefore(0)]
+h.indexAfter(12)
+h.times[h.indexAfter(12)]
 */
