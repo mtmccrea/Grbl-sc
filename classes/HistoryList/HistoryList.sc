@@ -13,15 +13,18 @@ E.g. give me the values stored in the last 25 seconds so I can plot the
 position of the drawing machine plotter over the last 25 seconds.
 
 HistoryList keeps track of when each value (array of values, actually)
-is added to the list. These times are stored in the "times" List
-while the values are stored in the "list".
+is added to the list. These times are stored in the ".times" List
+while the values are stored in the ".list".
 
-HistoryList has a maxSize, beyond which the times and items lists
+HistoryList has a maxSize, beyond which the .times and .items lists
 within it wrap their pointer. Whenever querying the values above
 or below a certain point, the 'times' and 'list' Lists are rotated
 so that the write head is back to 0, therefore the lists are sorted
 in ascending order again and can be quickly checked for the index
-above or below a certain cutoff _time_.
+above or below a certain cutoff _time_. As such the items in the list
+can't be expected to be in the same index all the time, which is why
+.at, .last, .first, .timeAt are all reimplemented to account for the
+constant rotating.
 */
 
 HistoryList {
