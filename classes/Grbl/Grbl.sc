@@ -8,6 +8,7 @@ Grbl : Arduino
 	var <posBus, <writePos = false, <>stateUpdateRate;
 	var <>server;
 	var <posPlotter;
+	var <pathHistory;
 
 	*parserClass { ^GrblParser }
 
@@ -41,6 +42,13 @@ Grbl : Arduino
 		// };
 
 		inputThread = fork { parser.parse };
+	}
+
+	// optionally initialize the pathHistory, which keeps a running
+	// buffer of the last maxSize values, for plotting, etc.
+	initPathHistory { |minDist=0.1, minPeriod=0.25, startNow=false, maxSize|
+		pathHistory = HistoryList(minDist: minDist, minPeriod: minPeriod, startNow: startNow);
+		maxSize !? {pathHistory.maxSize_(maxSize)};
 	}
 
 	// Note: .send increments the rxBuf with the message character size
@@ -352,8 +360,9 @@ Grbl : Arduino
 
 	free {
 		stateRoutine.stop;
-		posPlotter !? { posPlotter.free };
-		posBus !? { posBus.free; posBus = nil };
+		posPlotter !? {posPlotter.free};
+		posBus !? {posBus.free; posBus = nil};
+		pathHistory !? {pathHistory = nil};
 		this.close;
 	}
 }
@@ -539,6 +548,7 @@ GrblParser {
 		grbl.changed(\pBuf, pBuf);
 
 		grbl.writePos.if { grbl.posBus.set(wPos[0..1]) };
+		grbl.pathHistory !? {grbl.pathHistory.add(*wPos[0..1])};
 
 		^[mode, wPos, mPos, pBuf]
 	}

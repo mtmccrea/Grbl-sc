@@ -55,7 +55,7 @@ HistoryList {
 		};
 
 		times.add(now);
-		postf("\tadding %\n", values);
+		//postf("\tadding %\n", values);
 		list.add(values);
 		initialized = true;
 	}
@@ -69,7 +69,7 @@ HistoryList {
 				// filter time threshold
 				if (minPeriod.notNil) {
 					if ((now - times.last) < minPeriod) {
-						"\ttoo soon".postln;
+						//"\ttoo soon".postln;
 						pTest = false;
 						break.();
 					}
@@ -78,7 +78,7 @@ HistoryList {
 				// filter distance threshold
 				if (pTest and: minDist.notNil) {
 					if (list.last.asPoint.dist(values.asPoint) < minDist) {
-						"\ttoo close".postln;
+						//"\ttoo close".postln;
 						dTest = false;
 						break.();
 					}
@@ -87,7 +87,7 @@ HistoryList {
 				if (dTest) {
 
 					/* add a value */
-					postf("\tadding %\n", values);
+					// postf("\tadding %\n", values);
 
 					if (listFull)  {
 						times[wr] = now;
@@ -136,7 +136,7 @@ HistoryList {
 		},{
 			halfIdx = this.idxBetween(lowIdx, highIdx);
 
-			postf("halfIdx: %, %\n", halfIdx, times[halfIdx]);
+			// postf("halfIdx: %, %\n", halfIdx, times[halfIdx]);
 
 			idxTime = times[halfIdx];
 
@@ -231,8 +231,8 @@ HistoryList {
 		idx = this.indexBefore(seconds);
 
 		// debug
-		postf("times before %:\n", seconds);
-		times[..idx].do(_.postln);
+		// postf("times before %:\n", seconds);
+		// times[..idx].do(_.postln);
 
 		^list[..idx]
 	}
@@ -242,8 +242,8 @@ HistoryList {
 		idx = this.indexAfter(seconds);
 
 		// debug
-		postf("times after %:\n", seconds);
-		times[idx..].do(_.postln);
+		// postf("times after %:\n", seconds);
+		// times[idx..].do(_.postln);
 
 		^if (idx.isNil) {[]} {list[idx..]};
 	}
