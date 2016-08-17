@@ -168,6 +168,14 @@ HistoryList {
 		^res
 	}
 
+	// rotate the list and times so that the pointer is at 0
+	// and the list is ascending from earliest stored time
+	rotateToZero {
+		list = list.rotate(wr.neg);
+		times = times.rotate(wr.neg);
+		wr = 0;
+	}
+
 	indexBefore { |seconds|
 		var lowIdx=0, halfIdx, highIdx, prevIdx, idxTime, searching=true, cnt=0, res;
 
@@ -175,12 +183,7 @@ HistoryList {
 			"Time provided is negative".throw
 		};
 
-		if (listFull) {
-			// rotate so pointer is as 0
-			list = list.rotate(wr.neg);
-			times = times.rotate(wr.neg);
-			wr = 0;
-		};
+		if (listFull) {this.rotateToZero};
 
 		highIdx = times.size-1;
 
@@ -266,7 +269,7 @@ HistoryList {
 
 	now {
 		if (startTime.isNil) {
-			"startTime initialized".warn;
+			"startTime uninitialized".warn;
 			^nil
 		} {
 			^Main.elapsedTime - startTime
