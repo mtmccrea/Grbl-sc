@@ -35,7 +35,7 @@ GrblDriver : Grbl {
 	var <ui;
 	var <timeLastSent, <destLastSent;
 	var <throttle=1, <>autoThrottle=0.05, throttleCount=0, outOfRangeVal;
-	var <>plannerMin=3, <>plannerMax=7;
+	var <>plannerMin=5, <>plannerMax=8;
 
 	// LFO driving vars
 	var lfoDrivingEnabled = false, <driving=false;
