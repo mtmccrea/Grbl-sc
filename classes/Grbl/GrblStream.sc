@@ -194,7 +194,7 @@ GrblStream {
 
 	endIdx {^if (endIdx == -1) {path.size-1} {endIdx}}
 
-	length {this.endIdx+1-startIdx}
+	length {^this.endIdx+1-startIdx}
 
 	// approx time to execute path
 	duration {
@@ -215,7 +215,7 @@ GrblStream {
 			// path.drop(1).do{
 			// |xyf|
 			var feed, thisPnt, dist, dur, xyf;
-			xyf = path(idx);
+			xyf = path[idx];
 
 			feed = if (feedOverride) {defaultFeed} {xyf[2] ?? defaultFeed};
 			thisPnt = Point(xyf[0], xyf[1] ?? lastPnt.y);
