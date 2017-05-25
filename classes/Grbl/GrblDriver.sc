@@ -564,7 +564,7 @@ GrblDriver : Grbl {
 
 	softLimitsSC_ { |xLow,xHigh,yLow,yHigh|
 		this.xLimitLow_(xLow); this.xLimitHigh_(xHigh);
-		this.yLimitLow_(yLow); this.xLimitHigh_(yHigh);
+		this.yLimitLow_(yLow); this.yLimitHigh_(yHigh);
 	}
 
 	updateSoftClipLimits {
