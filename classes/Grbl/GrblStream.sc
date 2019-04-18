@@ -125,6 +125,7 @@ GrblStream {
 		};
 		path = [];
 
+        postf("first instruction: %, feed %\n", arr[0], arr[0][2]);
 		arr[0][2] ?? {
 			"WARNING: ".post;
 			"First move has an undefined feed rate, be sure to set a defaultFeed or instructions will be skipped until a feed is defined.".postln
@@ -140,6 +141,7 @@ GrblStream {
 
 			xyf[2] !? {
 				feed = xyf.at(2).asFloat;
+                postf("feed provided %\n", feed);
 				if (feed <= 0) {
 					format("Found feed rate <= 0: %, at index %\n", feed, i).warn;
 					feed = nil
@@ -148,11 +150,14 @@ GrblStream {
 
 			// filter out undefined feed rate or feed rate of 0
 			if (feed.notNil){
-				path = path.add(*xyf.asFloat);
+				path = path.add(xyf.asFloat);
 			} { // add position only
 				path = path.add(xyf[0..1].asFloat);
 			}
 		};
+        "initialized:".postln;
+        path.postln;
+         "finalized".postln;
 		this.changed(\status, "Path updated.");
 		this.changed(\pathLoaded);
 	}
