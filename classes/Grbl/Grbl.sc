@@ -242,6 +242,10 @@ Grbl : Arduino
 		this.send("$122="++mmPerSec2)
 	}
 
+    juncDeviation_ { |dev = 0.020| // grbl def
+        this.send("$11="++dev)
+    }
+
 	// bool, 1 or 0	// set soft limit on/off
 	enableSoftLimit_ { |bool|
 		bool.asBoolean.if(
