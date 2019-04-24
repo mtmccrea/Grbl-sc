@@ -98,6 +98,18 @@ GrblDriver : Grbl {
 		);
 	}
 
+	// Overwrite Grbl:goToDur_ to clip at min/maxFeed
+	// Go to a postion over specific duration
+	// NOTE: doesn't currently account for acceleration, so faster
+	// moves will actually take a bit longer than expected
+	goToDur_ { |toX, toY, duration|
+		var dist, feedRateSec, feed;
+		dist = this.calcDistDelta(Point(wPos[0], wPos[1]), Point(toX, toY));
+		feedRateSec = dist / duration;                     // dist/sec
+		feed = (feedRateSec * 60).clip(minFeed, maxFeed);  // dist/min
+		this.goTo_(toX, toY, feed);
+	}
+
 	makeGui { ^this.subclassResponsibility(thisMethod) }
 
 	prPushParams {
