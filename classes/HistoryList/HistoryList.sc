@@ -85,7 +85,6 @@ HistoryList {
 				};
 
 				if (dTest) {
-
 					/* add a value */
 					// postf("\tadding %\n", values);
 
@@ -115,7 +114,8 @@ HistoryList {
 	// NOTE: the following methods require the items and sizes
 	// to be rotated so that their
 	indexAfter { |seconds|
-		var lowIdx=0, halfIdx, highIdx, prevIdx, idxTime, searching=true, cnt=0, res;
+		var lowIdx = 0, halfIdx, highIdx, prevIdx, idxTime;
+		var searching = true, cnt = 0, res;
 
 		if (listFull) {
 			// rotate so pointer is as 0
@@ -127,9 +127,7 @@ HistoryList {
 		highIdx = times.size-1;
 
 		// first test last item
-		if (times[highIdx] <= seconds) {
-			^nil
-		};
+		if (times[highIdx] <= seconds) { ^nil };
 
 		while ( {
 			searching
@@ -145,7 +143,8 @@ HistoryList {
 				// landed below threshold
 				highIdx = [lowIdx, highIdx].maxItem;
 				lowIdx = halfIdx;
-			} { // landed above threshold
+			}{
+				// landed above threshold
 				lowIdx = [lowIdx, highIdx].minItem;
 				highIdx = halfIdx;
 			};
@@ -158,9 +157,9 @@ HistoryList {
 				} {
 					halfIdx + 1
 				}
-			} {
+			}{
 				prevIdx = halfIdx;
-				cnt = cnt+1;
+				cnt = cnt + 1;
 			}
 		}
 		);
@@ -177,7 +176,8 @@ HistoryList {
 	}
 
 	indexBefore { |seconds|
-		var lowIdx=0, halfIdx, highIdx, prevIdx, idxTime, searching=true, cnt=0, res;
+		var lowIdx = 0, halfIdx, highIdx, prevIdx, idxTime;
+		var searching = true, cnt = 0, res;
 
 		seconds.isNegative.if {
 			"Time provided is negative".throw
@@ -230,25 +230,14 @@ HistoryList {
 	}
 
 	itemsBefore { |seconds|
-		var idx;
-		idx = this.indexBefore(seconds);
-
-		// debug
-		// postf("times before %:\n", seconds);
-		// times[..idx].do(_.postln);
-
+		var idx = this.indexBefore(seconds);
 		^list[..idx]
 	}
 
 	itemsAfter { |seconds|
 		var idx;
 		idx = this.indexAfter(seconds);
-
-		// debug
-		// postf("times after %:\n", seconds);
-		// times[idx..].do(_.postln);
-
-		^if (idx.isNil) {[]} {list[idx..]};
+		^if (idx.isNil) { [] } { list[idx..] };
 	}
 
 	// last items within 'seconds' from last recorded
@@ -258,38 +247,37 @@ HistoryList {
 
 	// last items within 'seconds' from "now"
 	itemsWithinLast { |seconds|
-		var n;
-		n = this.now;
-		if (n.notNil) {
-			^this.itemsAfter(now - seconds)
-		} {
-			^[]
+		var n = this.now;
+		^if (n.notNil) {
+			this.itemsAfter(now - seconds)
+		}{
+			[]
 		}
 	}
 
 	now {
-		if (startTime.isNil) {
+		^if (startTime.isNil) {
 			"startTime uninitialized".warn;
-			^nil
-		} {
-			^Main.elapsedTime - startTime
+			nil
+		}{
+			Main.elapsedTime - startTime
 		}
 	}
 
 	offsetIdx { |idx|
-		if (listFull) {
-			^(idx + wr) % maxSize
+		^if (listFull) {
+			(idx + wr) % maxSize
 		} {
-			^idx
+			idx
 		};
 	}
 
-	at { |index| ^list[ this.offsetIdx(index) ] }
-	last { ^list[ this.offsetIdx(list.size-1) ] }
-	first { ^list[ this.offsetIdx(0) ] }
-	timeAt { |index| ^times[ this.offsetIdx(index) ] }
-	size  { ^times.size }
-	maxTime { ^times[ this.offsetIdx(times.size-1) ] }
+	at      { |index| ^list[this.offsetIdx(index)] }
+	last    { ^list[this.offsetIdx(list.size-1)] }
+	first   { ^list[this.offsetIdx(0)] }
+	timeAt  { |index| ^times[this.offsetIdx(index)] }
+	size    { ^times.size }
+	maxTime { ^times[this.offsetIdx(times.size-1)] }
 
 	clear { |startNow=false|
 		times = List();
@@ -300,7 +288,7 @@ HistoryList {
 			startTime = nil;
 		};
 		initialized = false;
-		wr = 0; //-1;
+		wr = 0;
 		listFull = false;
 	}
 
@@ -308,237 +296,14 @@ HistoryList {
 	// on the fly, so require clearing the list first for now
 	maxSize_ { |size|
 		if (initialized) {
-			Error("Must .clear the HistoryList before setting maxSize").errorString.postln;
-		} {
+			Error(
+				"Must .clear the HistoryList before setting maxSize"
+			).errorString.postln;
+		}{
 			maxSize = size;
 		};
 	}
 }
-
-/*HistoryList {
-	var <>minDist, <>minPeriod; // copyArgs
-	var <list, <times, startTime, now;
-	var <initialized=false;
-
-	*new { |minDist, minPeriod, startNow=false|
-		^super.newCopyArgs(minDist, minPeriod).init(startNow);
-	}
-
-	init { |startNow|
-		list = List();
-		times = List();
-		startNow.if{
-			startTime = Main.elapsedTime;
-		};
-	}
-
-	prAddFirst { |...values|
-		if (startTime.isNil) {
-			startTime = Main.elapsedTime;
-			now = 0;
-		} {
-			now = this.now;
-		};
-
-		times.add(now);
-		postf("\tadding %\n", values);
-		list.add(values);
-		initialized = true;
-	}
-
-	add { |...values|
-		var dTest=true, pTest=true;
-		block { |break|
-			if (initialized) {
-				now = this.now;
-
-				// filter time threshold
-				if (minPeriod.notNil) {
-					if ((now - times.last) < minPeriod) {
-						"\ttoo soon".postln;
-						pTest = false;
-						break.();
-					}
-				};
-
-				// filter distance threshold
-				if (pTest and: minDist.notNil) {
-					if (list.last.asPoint.dist(values.asPoint) < minDist) {
-						"\ttoo close".postln;
-						dTest = false;
-						break.();
-					}
-				};
-
-				if (dTest) {
-					times.add(now);
-					postf("\tadding %\n", values);
-					list.add(values);
-				};
-
-			} {
-				this.prAddFirst(*values);
-			}
-		};
-	}
-
-	idxBetween { |st, end|
-		^st + (end-st).half.asInt
-	}
-
-	indexAfter { |seconds|
-		var lowIdx=0, halfIdx, highIdx, prevIdx, idxTime, searching=true, cnt=0, res;
-
-		highIdx = times.size-1;
-
-		// first test last item
-		if (times[highIdx] <= seconds) {
-			^nil
-		};
-
-		while ( {
-			searching
-		},{
-			halfIdx = this.idxBetween(lowIdx, highIdx);
-
-			postf("halfIdx: %, %\n", halfIdx, times[halfIdx]);
-
-			idxTime = times[halfIdx];
-
-			// #lowIdx, highIdx = [prevIdx, halfIdx].sort;
-			if (idxTime < seconds) {
-				// landed below threshold
-				highIdx = [lowIdx, highIdx].maxItem;
-				lowIdx = halfIdx;
-			} { // landed above threshold
-				lowIdx = [lowIdx, highIdx].minItem;
-				highIdx = halfIdx;
-			};
-
-			if (halfIdx == prevIdx) {
-				searching = false;
-				// see which side the index falls on
-				res = if(times[halfIdx] >= seconds) {
-					halfIdx
-				} {
-					halfIdx + 1
-				}
-			} {
-				prevIdx = halfIdx;
-				cnt = cnt+1;
-			}
-		}
-		);
-
-		^res
-	}
-
-	indexBefore { |seconds|
-		var lowIdx=0, halfIdx, highIdx, prevIdx, idxTime, searching=true, cnt=0, res;
-
-		seconds.isNegative.if {
-			"Time provided is negative".throw
-		};
-
-		highIdx = times.size-1;
-
-		// first test last item
-		if (times[highIdx] <= seconds) {
-			^highIdx
-		};
-
-		while ({
-			searching
-		},{
-			halfIdx = this.idxBetween(lowIdx, highIdx);
-
-			postf("halfIdx: %, %\n", halfIdx, times[halfIdx]);
-
-			idxTime = times[halfIdx];
-
-			// #lowIdx, highIdx = [prevIdx, halfIdx].sort;
-			if (idxTime < seconds) {
-				// landed below threshold
-				highIdx = [lowIdx, highIdx].maxItem;
-				lowIdx = halfIdx;
-			} { // landed above threshold
-				lowIdx = [lowIdx, highIdx].minItem;
-				highIdx = halfIdx;
-			};
-
-			if (halfIdx == prevIdx) {
-				searching = false;
-				// see which side the index falls on
-				res = if(times[halfIdx] <= seconds) {
-					halfIdx
-				} {
-					halfIdx - 1
-				}
-			} {
-				prevIdx = halfIdx;
-				cnt = cnt+1;
-			}
-		}
-		);
-
-		^res
-	}
-
-	itemsBefore { |seconds|
-		var idx;
-		idx = this.indexBefore(seconds);
-		^list[..idx]
-	}
-
-	itemsAfter { |seconds|
-		var idx;
-		idx = this.indexAfter(seconds);
-		^if (idx.isNil) {[]} {list[idx..]};
-	}
-
-	// last items within 'seconds' from last recorded
-	itemsFromLastRecorded { |seconds|
-		^this.itemsAfter(this.maxTime - seconds)
-	}
-
-	// last items within 'seconds' from "now"
-	itemsWithinLast { |seconds|
-		var n;
-		n = this.now;
-		if (n.notNil) {
-			^this.itemsAfter(now - seconds)
-		} {
-			^[]
-		}
-	}
-
-	now {
-		if (startTime.isNil) {
-			"startTime initialized".warn;
-			^nil
-		} {
-			^Main.elapsedTime - startTime
-		}
-	}
-
-	at { |index| ^list[index] }
-	last { ^list.last }
-	first { ^list[0] }
-	timeAt { |index| ^times[index] }
-	size  { ^times.size }
-	maxTime { ^times.last }
-
-	clear { |startNow=false|
-		times = List();
-		list = List();
-		if (startNow) {
-			startTime = Main.elapsedTime;
-		} {
-			startTime = nil;
-		};
-		initialized = false;
-	}
-}*/
 
 /*  Testing
 h = HistoryList(0.1, 0.1);

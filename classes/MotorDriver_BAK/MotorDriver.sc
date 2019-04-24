@@ -1,9 +1,8 @@
-// NOTE: this class is deprecated and was refactored into GrblDriver and
-// extGrblDriver_LFO
-
-// TODO: add wait time after timeout so as not to accumulate lots of extra moves
-
-// add click and go to UserView
+/*
+   !!! NOTE !!!
+   This class is deprecated and was refactored into
+   GrblDriver and extGrblDriver_LFO
+*/
 
 MotorDriver {
 	// copyArgs
@@ -980,3 +979,5 @@ MotorDriver {
 		}, AppClock);
 	}
 }
+
+// TODO: add wait time after timeout so as not to accumulate lots of extra moves
