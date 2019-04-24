@@ -417,10 +417,6 @@ GrblDriver : Grbl {
 		};
 	}
 
-	calcDistDelta { |prevPnt, nextPnt|
-		^prevPnt.dist(nextPnt);
-	}
-
 	// used by followSerialBufXY_
 	submitMoveXY { |toX, toY, feed, when|
 		var cmd, size, destX, destY;
@@ -506,43 +502,6 @@ GrblDriver : Grbl {
 		outOfRangeVal = nil;
 		throttleCount = 0;
 		// plannerView !? {plannerView.free};
-	}
-
-	// Go to a postion over specific duration.
-	// overwrites Grbl.goToDur, clipping at min/maxFeed
-	// NOTE: doesn't currently account for acceleration, so faster moves
-	// will actually take a bit longer than expected
-	goToDur_ { |toX, toY, duration|
-		var dist, feedRateSec, feed;
-
-		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
-
-		// TODO: get this out of here - it's for coreXY movement ONLY
-		// isolate it in DMDriver: better probably to scale the feed rate, not change the distance
-		dist = dist * 2.sqrt;
-
-		// // calculate the distance in terms of motor feed, not pen head movement
-		// f = { |toX, toY, wPosX, wPosY|
-		// 	var dX, dY, dA, dB, dist;
-		// 	dX = toX - wPosX;
-		// 	dY = toY - wPosY;
-		// 	dA = dX+dY;
-		// 	dB = dX-dY;
-		//
-		// 	// dist = hypot((0.5*(dA+dB)), (0.5*(dA-dB)));
-		// 	dist = hypot(dA, dB);
-		// 	[dA, dB];
-		// 	[dist, Point(toX, toY).dist(Point(wPosX, wPosY))]
-		// }
-		//
-		// f.(-5, -10, -25, -5)
-		// f.(-5, -5, -15, -10)
-		// f.(-5, -5, -5, -10)
-
-		feedRateSec = dist / duration; // dist/sec
-		feed = (feedRateSec * 60).clip(minFeed, maxFeed); // dist/min
-		postf("goToDur feed: %\n", feed);
-		this.goTo_( toX, toY, feed );
 	}
 
 	// To set bounds for both plotters and for catching moves that would

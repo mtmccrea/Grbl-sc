@@ -130,7 +130,7 @@ Grbl : Arduino
 	goToDur_ { |toX, toY, duration|
 		var dist, feedRateSec, feed;
 
-		dist = Point(toX, toY).dist(Point(wPos[0], wPos[1]));
+		dist = this.calcDistDelta(Point(wPos[0], wPos[1]), Point(toX, toY));
 		feedRateSec = dist / duration; // dist/sec
 		feed = (feedRateSec * 60);
 
@@ -148,6 +148,11 @@ Grbl : Arduino
 	// 	this.goTo_( toX, toY, feed ); // feedRateEnv.at(feedRate.clip(1, 40))
 	// }
 
+	// made this simple calc its own method so it can be easily
+	// overwritten, e.g. by DMDriver
+	calcDistDelta { |prevPnt, nextPnt|
+		^prevPnt.dist(nextPnt);
+	}
 
 	// NOTE: ? status, ~ cycle start/resume, ! feed hold, and ^X soft-reset
 	// are responded to immediately and so do not need to be tracked in the rxBuf
