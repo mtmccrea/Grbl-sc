@@ -91,7 +91,7 @@ Grbl : Arduino
 		toX  !? { cmd = cmd ++ "X" ++ toX };
 		toY  !? { cmd = cmd ++ "Y" ++ toY };
 		feed !? { cmd = cmd ++ "F" ++ feed };
-		postf("sending: %, %, %\n", toX, toY, feed);
+		// postf("sending: %, %, %\n", toX, toY, feed);
 		this.send(cmd);
 	}
 
@@ -238,18 +238,18 @@ Grbl : Arduino
 
 	// bool, 1 or 0	// set soft limit on/off
 	enableSoftLimit_ { |bool|
-		this.send("$20=" ++ bool.asInt)
+		this.send("$20=" ++ bool.asInteger)
 	}
 
 	// bool, 1 or 0	// set hard limit on/off
 	enableHardLimit_ { |bool|
-		this.send("$21=" ++ bool.asInt)
+		this.send("$21=" ++ bool.asInteger)
 	}
 
 	/*		HOMING		*/
 	// bool, 1 or 0	// set hard limit on/off
 	enableHoming_ { |bool|
-		this.send("$22=" ++ bool.asInt)
+		this.send("$22=" ++ bool.asInteger)
 	}
 
 	homingInvertDirection_ {|invXbool, invYbool|
@@ -333,8 +333,8 @@ Grbl : Arduino
 			posBus !? { posBus.free; posBus = nil };
 		};
 
-		// set the writePos variable so the parser whether to update
-		// posBus with the position value
+		// set the writePos variable so the parser knows
+		// whether to update posBus with the position value
 		writePos = bool;
 	}
 
@@ -486,7 +486,7 @@ GrblParser {
 		mode = split[0].drop(1);
 		mPos = split[1..3].put(0, split[1].drop(5)).asFloat;
 		wPos = split[4..6].put(0, split[4].drop(5)).asFloat;
-		pBuf = split[7].drop(4).asInt;
+		pBuf = split[7].drop(4).asInteger;
 
 		// grbl.postState.if{ postf("pBuf  %\n", pBuf) }; // debug
 

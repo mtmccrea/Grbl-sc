@@ -84,7 +84,7 @@ GrblStream {
 								nextTarget[2] !? {nextTarget[2].round(1)} //~feed, nil is ok
 							}
 						);
-						// this.changed(\sent, sent.asInt);
+						// this.changed(\sent, sent.asInteger);
 
 						if (sent) {
 

@@ -281,7 +281,7 @@ GrblDriver : Grbl {
 							nextFeed.round(0.001),
 							now
 						);
-						this.changed(\sent, sent.asInt);
+						this.changed(\sent, sent.asInteger);
 					}{
 						"Won't follow in ALARM mode".postln;
 					};

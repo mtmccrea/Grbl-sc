@@ -107,7 +107,7 @@ HistoryList {
 	}
 
 	idxBetween { |st, end|
-		^st + (end-st).half.asInt
+		^st + (end-st).half.asInteger
 	}
 
 
